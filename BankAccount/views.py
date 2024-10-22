@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 
 # Create your views here.
@@ -26,17 +27,57 @@ def is_account_owner(user, account):
 
 
 ###########################################
+#
+# class BankAccountCreateView(generics.CreateAPIView):
+#
+#     queryset = BankAccount.objects.all()
+#     serializer_class = BankAccountSerializer
+#     permission_classes = [IsAuthenticated]
+
+# class BankAccountListView(generics.ListAPIView):
+#     #queryset = BankAccount.objects.all()
+#
+#     serializer_class = BankAccountSerializer
+#     permission_classes = [IsAuthenticated]
+
+
+from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import BankAccount
+from .serializers import BankAccountSerializer
+
 
 class BankAccountCreateView(generics.CreateAPIView):
-
-    queryset = BankAccount.objects.all()
     serializer_class = BankAccountSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # Check if the user is a superuser
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("You do not have permission to create a bank account.")
+
+        # Save the bank account if the user is a superuser
+        serializer.save()
+
+
+
+
 
 class BankAccountListView(generics.ListAPIView):
-    queryset = BankAccount.objects.all()
     serializer_class = BankAccountSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Check if the user is a superuser
+        if self.request.user.is_superuser:
+            # Superusers can see all bank accounts
+            return BankAccount.objects.all()
+        else:
+            # Regular users can only see their own bank accounts
+            return BankAccount.objects.filter(user=self.request.user)
+
+
 
 
 
@@ -187,26 +228,73 @@ class BankAccountStatusView(APIView):
 from .serializers import BankAccountSerializer
 
 ##############################################################3
+# class DepositView(APIView):
+#     def get(self, request):
+#         # List all bank accounts for selection
+#             accounts = BankAccount.objects.all()
+#             serializer = BankAccountSerializer(accounts, many=True)
+#             return Response(serializer.data)
+#     def post(self, request):
+#         serializer = BankAccountSerializer(data=request.data)
+#         if serializer.is_valid():
+#             account_number = serializer.validated_data['account_number']
+#             amount = serializer.validated_data['amount']
+#             account = get_object_or_404(BankAccount, account_number=account_number)
+#
+#             account.balance += amount
+#             account.save()
+#
+#             return Response({"message": "Deposit successful", "new_balance": account.balance},
+#                             status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# #
+
+
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from .models import BankAccount
+from .serializers import BankAccountSerializer, \
+    BankAccountDepositSerializer  # Ensure you have a separate serializer for deposits
+
+
 class DepositView(APIView):
+    permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
+
     def get(self, request):
-        # List all bank accounts for selection
-            accounts = BankAccount.objects.all()
-            serializer = BankAccountSerializer(accounts, many=True)
-            return Response(serializer.data)
+        # List only the bank accounts of the authenticated user
+        accounts = BankAccount.objects.filter(user=request.user)
+        serializer = BankAccountSerializer(accounts, many=True)
+        return Response(serializer.data)
+
     def post(self, request):
-        serializer = BankAccountSerializer(data=request.data)
+        serializer = BankAccountDepositSerializer(data=request.data)
         if serializer.is_valid():
             account_number = serializer.validated_data['account_number']
             amount = serializer.validated_data['amount']
-            account = get_object_or_404(BankAccount, account_number=account_number)
 
+            # Get the user's bank account, ensuring they can only access their own
+            account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
+
+            # Check if account is suspended or blocked
+            if account.suspended:
+                return Response({"message": "Your account is suspended!"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if account.status == 'blocked':
+                return Response({"message": "Your account is blocked!"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            # Update the balance
             account.balance += amount
             account.save()
 
             return Response({"message": "Deposit successful", "new_balance": account.balance},
                             status=status.HTTP_200_OK)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
+
 
 from BankAccount.serializers import BankAccountDepositSerializer
 
@@ -243,82 +331,265 @@ from BankAccount.serializers import BankAccountDepositSerializer
 
 
 
+#Last change 10:14
+
+# class DepositView(APIView):
+#
+#     def get(self, request):
+#         accounts = BankAccount.objects.all()
+#         serializer = BankAccountSerializer(accounts, many=True)
+#         return Response(serializer.data)
+#
+#     def post(self, request):
+#         print("Request data: ", request.data)
+#
+#         serializer = BankAccountDepositSerializer(data=request.data)
+#         if serializer.is_valid():
+#             account_number = serializer.validated_data['account_number']
+#             amount = serializer.validated_data['amount']
+#             print(f"Validated account number: {account_number}, amount: {amount}")
+#
+#             account = get_object_or_404(BankAccount, account_number=account_number)
+#
+#             # Check if account is suspended or blocked
+#             if account.suspended:
+#                 return Response({"message": "Your account is suspended!."},
+#                                 status=status.HTTP_400_BAD_REQUEST)
+#             if account.status == 'blocked':
+#                 return Response({"message": "Your account is blocked!."},
+#                                 status=status.HTTP_400_BAD_REQUEST)
+#
+#             print(f"Current balance: {account.balance}")
+#             account.balance += amount
+#             account.save()
+#
+#             print(f"New balance after deposit: {account.balance}")
+#
+#             return Response({"message": "Deposit successful", "new_balance": account.balance},
+#                             status=status.HTTP_200_OK)
+#
+#         print("Validation errors: ", serializer.errors)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class DepositView(APIView):
+
+
+
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import BankAccount  # Assuming your BankAccount model is imported
+from .serializers import BankAccountSerializer, BankAccountDepositSerializer  # Assuming these serializers are imported
+
+# class DepositView(APIView):
+#     def get(self, request):
+#         # Check if the user is a superuser
+#         if request.user.is_superuser:
+#             # Superusers can see all accounts
+#             accounts = BankAccount.objects.all()
+#         else:
+#             # Regular users can only see their own accounts
+#             accounts = BankAccount.objects.filter(user=request.user)
+#
+#         serializer = BankAccountSerializer(accounts, many=True)
+#         return Response(serializer.data)
+#
+#     def post(self, request):
+#         print("Request data: ", request.data)
+#
+#         serializer = BankAccountDepositSerializer(data=request.data)
+#         if serializer.is_valid():
+#             account_number = serializer.validated_data['account_number']
+#             amount = serializer.validated_data['amount']
+#             print(f"Validated account number: {account_number}, amount: {amount}")
+#
+#             # Fetch the bank account, ensuring it's the user's account if not a superuser
+#             if not request.user.is_superuser:
+#                 account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
+#             else:
+#                 account = get_object_or_404(BankAccount, account_number=account_number)
+#
+#             # Check if account is suspended or blocked
+#             if account.suspended:
+#                 return Response({"message": "Your account is suspended!"},
+#                                 status=status.HTTP_400_BAD_REQUEST)
+#             if account.status == 'blocked':
+#                 return Response({"message": "Your account is blocked!"},
+#                                 status=status.HTTP_400_BAD_REQUEST)
+#
+#             print(f"Current balance: {account.balance}")
+#             account.balance += amount
+#             account.save()
+#
+#             print(f"New balance after deposit: {account.balance}")
+#
+#             return Response({"message": "Deposit successful", "new_balance": account.balance},
+#                             status=status.HTTP_200_OK)
+#
+#         print("Validation errors: ", serializer.errors)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+# from BankAccount.models import BankAccount
+# class WithdrawView(APIView):
+#     def get(self, request):
+#             accounts = BankAccount.objects.all()
+#             serializer = BankAccountSerializer(accounts, many=True)
+#             return Response(serializer.data)
+#     def post(self, request):
+#         serializer = BankAccountDepositSerializer(data=request.data)
+#         if serializer.is_valid():
+#             account_number = serializer.validated_data['account_number']
+#             amount = serializer.validated_data['amount']
+#             account = get_object_or_404(BankAccount, account_number=account_number)
+#         if account.status == 'blocked':
+#             return Response({"message": "Your account is blocked!"},status=status.HTTP_400_BAD_REQUEST)
+#         if account.suspended:
+#             print("Illegal operation: Account is suspended.")
+#             return Response({"error": "Illegal operation: Account is suspended."}, status=status.HTTP_403_FORBIDDEN)
+#
+#         else:
+#             if account.balance >= amount:
+#                 account.balance -= amount
+#                 account.save()
+#                 return Response({"message": "Withdrawal successful", "new_balance": account.balance}, status=status.HTTP_200_OK)
+#             else:
+#                 return Response({"error": "Insufficient balance"},)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#
+
+
+
+
+
+
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from .models import BankAccount
+from .serializers import BankAccountSerializer, BankAccountDepositSerializer  # Assume you have this serializer for withdraw
+
+class WithdrawView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access this view
 
     def get(self, request):
-        accounts = BankAccount.objects.all()
+        # Check if the user is a superuser
+        if request.user.is_superuser:
+            # Superusers can see all accounts
+            accounts = BankAccount.objects.all()
+        else:
+            # Regular users can only see their own accounts
+            accounts = BankAccount.objects.filter(user=request.user)
+
         serializer = BankAccountSerializer(accounts, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        print("Request data: ", request.data)
-
-        serializer = BankAccountDepositSerializer(data=request.data)
+        serializer = BankAccountDepositSerializer(data=request.data)  # Serializer for withdraw operation
         if serializer.is_valid():
             account_number = serializer.validated_data['account_number']
             amount = serializer.validated_data['amount']
-            print(f"Validated account number: {account_number}, amount: {amount}")
 
-            account = get_object_or_404(BankAccount, account_number=account_number)
+            # Fetch the bank account, ensuring it's the user's account if not a superuser
+            if request.user.is_superuser:
+                account = get_object_or_404(BankAccount, account_number=account_number)
+            else:
+                account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
 
             # Check if account is suspended or blocked
-            if account.suspended:
-                return Response({"message": "Your account is suspended!."},
-                                status=status.HTTP_400_BAD_REQUEST)
             if account.status == 'blocked':
-                return Response({"message": "Your account is blocked!."},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": "Your account is blocked!"}, status=status.HTTP_400_BAD_REQUEST)
+            if account.suspended:
+                return Response({"error": "Illegal operation: Account is suspended."}, status=status.HTTP_403_FORBIDDEN)
 
-            print(f"Current balance: {account.balance}")
-            account.balance += amount
-            account.save()
-
-            print(f"New balance after deposit: {account.balance}")
-
-            return Response({"message": "Deposit successful", "new_balance": account.balance},
-                            status=status.HTTP_200_OK)
-
-        print("Validation errors: ", serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-
-
-
-
-
-
-from BankAccount.models import BankAccount
-class WithdrawView(APIView):
-    def get(self, request):
-            accounts = BankAccount.objects.all()
-            serializer = BankAccountSerializer(accounts, many=True)
-            return Response(serializer.data)
-    def post(self, request):
-        serializer = BankAccountDepositSerializer(data=request.data)
-        if serializer.is_valid():
-            account_number = serializer.validated_data['account_number']
-            amount = serializer.validated_data['amount']
-            account = get_object_or_404(BankAccount, account_number=account_number)
-        if account.status == 'blocked':
-            return Response({"message": "Your account is blocked!"},status=status.HTTP_400_BAD_REQUEST)
-        if account.suspended:
-            print("Illegal operation: Account is suspended.")
-            return Response({"error": "Illegal operation: Account is suspended."}, status=status.HTTP_403_FORBIDDEN)
-
-        else:
+            # Check if the balance is sufficient for withdrawal
             if account.balance >= amount:
                 account.balance -= amount
                 account.save()
                 return Response({"message": "Withdrawal successful", "new_balance": account.balance}, status=status.HTTP_200_OK)
             else:
-                return Response({"error": "Insufficient balance"},)
+                return Response({"error": "Insufficient balance"}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# class GetBalanceView(APIView):
+#     def get(self, request):
+#             accounts = BankAccount.objects.all()
+#             serializer = BankAccountSerializer(accounts, many=True)
+#             return Response(serializer.data)
+#             return Response(serializer.data)
+#     def post(self, request):
+#             account_number = request.data.get('account_number')  # Get account number from request
+#
+#             if not account_number:
+#                 return Response({"error": "Account number is required."}, status=status.HTTP_400_BAD_REQUEST)
+#
+#             # Retrieve the account using the account number
+#             account = get_object_or_404(BankAccount, account_number=account_number)
+#
+#             # Return the balance of the account
+#             return Response({"balance": account.balance}, status=status.HTTP_200_OK)
+
+
+
 
 
 
@@ -328,18 +599,41 @@ class WithdrawView(APIView):
 
 class GetBalanceView(APIView):
     def get(self, request):
+        # Check if the user is a superuser
+        if request.user.is_superuser:
+            # Superusers can see all accounts and their balances
             accounts = BankAccount.objects.all()
-            serializer = BankAccountSerializer(accounts, many=True)
-            return Response(serializer.data)
-            return Response(serializer.data)
+        else:
+            # Regular users can only see their own accounts
+            accounts = BankAccount.objects.filter(user=request.user)
+
+        serializer = BankAccountSerializer(accounts, many=True)
+        return Response(serializer.data)
+
     def post(self, request):
-            account_number = request.data.get('account_number')  # Get account number from request
+        account_number = request.data.get('account_number')  # Get account number from request
 
-            if not account_number:
-                return Response({"error": "Account number is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not account_number:
+            return Response({"error": "Account number is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Retrieve the account using the account number
+        # Retrieve the account using the account number, ensuring the user is authorized
+        if request.user.is_superuser:
+            # Superusers can retrieve any account
             account = get_object_or_404(BankAccount, account_number=account_number)
+        else:
+            # Regular users can only retrieve their own accounts
+            account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
 
-            # Return the balance of the account
-            return Response({"balance": account.balance}, status=status.HTTP_200_OK)
+        # Return the balance of the account
+        return Response({"Your balance is: ": account.balance}, status=status.HTTP_200_OK)
+
+
+
+
+
+
+
+
+
+
+
