@@ -26,16 +26,40 @@ class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
 
 class UserListView(generics.ListAPIView):
+    def get(self, request):
+        # Check if the user is a superuser
+        if request.user.is_superuser:
+            # Superusers can see all users
+            users = User.objects.all()
+        else:
+            # Regular users can only see their own profile
+            users = User.objects.filter(email=request.user.email)
+
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)  # Return the list of users
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
 class UserUpdateView(APIView):
+    # def get(self, request):
+    #     # List all users for selection
+    #     users = User.objects.all()  # Get all users
+    #     serializer = UserSerializer(users, many=True)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)  # Return the list of users
+
     def get(self, request):
-        # List all users for selection
-        users = User.objects.all()  # Get all users
+        # Check if the user is a superuser
+        if request.user.is_superuser:
+            # Superusers can see all users
+            users = User.objects.all()
+        else:
+            # Regular users can only see their own profile
+            users = User.objects.filter(email=request.user.email)
+
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)  # Return the list of users
+
 
     def put(self, request):
         # Update user details based on the provided email
@@ -65,9 +89,16 @@ class UserUpdateView(APIView):
 
 
 class UserDeleteView(APIView):
+
     def get(self, request):
-        # List all users for selection
-        users = User.objects.all()  # Get all users
+        # Check if the user is a superuser
+        if request.user.is_superuser:
+            # Superusers can see all users
+            users = User.objects.all()
+        else:
+            # Regular users can only see their own profile
+            users = User.objects.filter(email=request.user.email)
+
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)  # Return the list of users
 
