@@ -9,5 +9,7 @@ urlpatterns = [
     path('deposit/', views.DepositView.as_view(), name='bank-account-deposit'), #Last change
     path('withdraw/', views.WithdrawView.as_view(), name='bank-account-withdraw'),
     path('get-balance/', views.GetBalanceView.as_view(), name='bank-account-get-balance'),
+    path('get-balance/', views.GetBalanceView.as_view(), name='bank-account-get-balance'),
+    path('transfer/', views.TransferView.as_view(), name='bank-account-transfer'),
 
 ]

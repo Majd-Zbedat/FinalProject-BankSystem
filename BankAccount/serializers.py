@@ -6,8 +6,13 @@ class BankAccountSerializer(serializers.ModelSerializer):
         model = BankAccount
         fields = ['user','name','account_number','balance','suspended','status']
 
+    # class BankAccountSerializer(serializers.ModelSerializer):
+    #     class Meta:
+    #         model = BankAccount
+    #         fields = ['account_number', 'balance', 'user', 'suspended', 'status']
+    #         read_only_fields = ['balance', 'user', 'suspended', 'status']
 
-#############################################################
+    #############################################################
     def get_status_color(self, obj):
         if obj.status == 'active':
             return 'green'
