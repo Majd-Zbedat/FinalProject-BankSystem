@@ -12,23 +12,12 @@ from django.db import models
 from django.conf import settings
 
 
-# class BankAccount(models.Model):
-#     user1 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-#
-#     user = models.ForeignKey(user1, on_delete=models.CASCADE)
-#     account_number = models.CharField(max_length=20, unique=True)
-#     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-#
-#     def __str__(self):
-#         return f"Account: {self.account_number} - {self.user.username}"
 
 
 class BankAccount(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('blocked', 'Blocked'),
-        ('suspended', 'Suspended'),
-        ('unsuspended', 'Unsuspended'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # Correctly reference the user model

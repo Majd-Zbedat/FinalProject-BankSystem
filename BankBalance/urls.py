@@ -1,7 +1,6 @@
-# BankBalance/urls.py
 from django.urls import path
+from .views import BankBalanceView
 
 urlpatterns = [
-    # Add your app-specific views and URLs here
-    # Example: path('example/', example_view, name='example'),
+    path('balance/', BankBalanceView.as_view(), name='bank-balance'),  # URL for accessing bank balance
 ]

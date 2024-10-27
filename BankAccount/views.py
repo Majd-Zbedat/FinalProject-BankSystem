@@ -163,17 +163,91 @@ from .serializers import BankAccountSerializer  # Assuming you have this seriali
     #
     #     return Response({"error": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
 
+# class BankAccountSuspendUnsuspendView(APIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     def get(self, request):
+#             if request.user.is_superuser:
+#                 accounts = BankAccount.objects.all()
+#             else:
+#                 accounts = BankAccount.objects.filter(user=request.user)
+#
+#             serializer = BankAccountSerializer(accounts, many=True)
+#             return Response(serializer.data)
+#
+#     def put(self, request):
+#         account_number = request.data.get('account_number')
+#         action = request.data.get('action')  # Expecting 'suspend' or 'unsuspend'
+#
+#         if not account_number:
+#             return Response({"error": "Account number is required."}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         # Retrieve the account using the account number
+#         bank_account = get_object_or_404(BankAccount, account_number=account_number)
+#
+#         # Superuser can suspend/unsuspend any account, regular user only their own account
+#         if not request.user.is_superuser and bank_account.user != request.user:
+#             return Response({"error": "You are only allowed to suspend/unsuspend your own accounts."}, status=status.HTTP_403_FORBIDDEN)
+#
+#         # Check if the account is blocked; a blocked account cannot be suspended
+#         if bank_account.status == 'blocked':
+#             return Response({"error": "Your account is blocked can't be suspend/unsuspend!."}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         if action == 'suspend':
+#             # Check if the balance is negative
+#             if bank_account.balance < 0:
+#                 return Response({"error": "Cannot suspend an account with a negative balance."}, status=status.HTTP_400_BAD_REQUEST)
+#             bank_account.suspended = True
+#             bank_account.save()
+#             return Response({"message": "Account suspended successfully."}, status=status.HTTP_200_OK)
+#
+#         elif action == 'unsuspend':
+#             if not bank_account.suspended:
+#                 return Response({"error": "Account is already active."}, status=status.HTTP_400_BAD_REQUEST)
+#             bank_account.suspended = False
+#             bank_account.save()
+#             return Response({"message": "Account unsuspended successfully."}, status=status.HTTP_200_OK)
+#
+#         return Response({"error": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
+#
+
+
+
+
+
+# BankAccount/views.py
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import BankAccount
+from .serializers import BankAccountSerializer
+from Loan.models import Loan  # Import the Loan model
+from django.shortcuts import get_object_or_404
+from django.db.models import F  # Import F for field comparisons
+
+
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from django.db.models import F  # Import F for field comparisons
+from .models import BankAccount
+from .serializers import BankAccountSerializer
+from Loan.models import Loan  # Import the Loan model
+
 class BankAccountSuspendUnsuspendView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-            if request.user.is_superuser:
-                accounts = BankAccount.objects.all()
-            else:
-                accounts = BankAccount.objects.filter(user=request.user)
+        if request.user.is_superuser:
+            accounts = BankAccount.objects.all()
+        else:
+            accounts = BankAccount.objects.filter(user=request.user)
 
-            serializer = BankAccountSerializer(accounts, many=True)
-            return Response(serializer.data)
+        serializer = BankAccountSerializer(accounts, many=True)
+        return Response(serializer.data)
 
     def put(self, request):
         account_number = request.data.get('account_number')
@@ -191,12 +265,18 @@ class BankAccountSuspendUnsuspendView(APIView):
 
         # Check if the account is blocked; a blocked account cannot be suspended
         if bank_account.status == 'blocked':
-            return Response({"error": "Your account is blocked can't be suspend/unsuspend!."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Your account is blocked; can't be suspended or unsuspended!"}, status=status.HTTP_400_BAD_REQUEST)
 
         if action == 'suspend':
+            # Check if the user has any loans that are not fully repaid
+            outstanding_loans = Loan.objects.filter(user=bank_account.user, amount_paid__lt=F('amount'))
+            if outstanding_loans.exists():
+                return Response({"error": "You cannot suspend your account until all loans are fully repaid."}, status=status.HTTP_400_BAD_REQUEST)
+
             # Check if the balance is negative
             if bank_account.balance < 0:
                 return Response({"error": "Cannot suspend an account with a negative balance."}, status=status.HTTP_400_BAD_REQUEST)
+
             bank_account.suspended = True
             bank_account.save()
             return Response({"message": "Account suspended successfully."}, status=status.HTTP_200_OK)
@@ -209,11 +289,6 @@ class BankAccountSuspendUnsuspendView(APIView):
             return Response({"message": "Account unsuspended successfully."}, status=status.HTTP_200_OK)
 
         return Response({"error": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
 
 
 

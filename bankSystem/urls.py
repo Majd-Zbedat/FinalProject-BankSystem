@@ -12,7 +12,7 @@ urlpatterns = [
 
     # Your app URLs
     path('api/BankAccount/', include('BankAccount.urls')),
-   # path('api/BankBalance/', include('BankBalance.urls')),
+    path('api/BankBalance/', include('BankBalance.urls')),
     path('api/Loan/', include('Loan.urls')),
     path('api/Transaction/', include('Transaction.urls')),
     path('api/User/', include('User.urls')),
