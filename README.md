@@ -1,4 +1,4 @@
-# FINAL PROJECT - BANK MANAGEMENT SYSTEM
+#  BANK MANAGEMENT SYSTEM
 
 ## OVERVIEW
 The **Bank Management System** is a comprehensive solution designed to efficiently manage the core functions of banking operations while ensuring robust security measures.
