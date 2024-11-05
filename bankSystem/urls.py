@@ -5,12 +5,18 @@ from django.contrib import admin
 from django.urls import path,include
 urlpatterns = [
     path('admin/', admin.site.urls),
+<<<<<<< HEAD
     path('api/auth/', include('rest_framework.urls')),  # For login/logout
     # OpenAPI schema
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),  # Swagger UI
 
     # Your app URLs
+=======
+    path('api/auth/', include('rest_framework.urls')),
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+>>>>>>> 2b87986d (Last Version Of Project)
     path('api/BankAccount/', include('BankAccount.urls')),
     path('api/BankBalance/', include('BankBalance.urls')),
     path('api/Loan/', include('Loan.urls')),

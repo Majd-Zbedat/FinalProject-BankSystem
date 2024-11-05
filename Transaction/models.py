@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # # from django.db import models
 # #
 # # # Create your models here.
@@ -13,6 +14,25 @@
 # from django.db import models
 # from django.conf import settings
 # from BankAccount.models import BankAccount
+=======
+from django.utils import timezone
+
+
+from django.db import models
+from django.conf import settings
+
+class Transaction(models.Model):
+    account_number = models.CharField(max_length=20,default='')
+    amount = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    transaction_type = models.CharField(max_length=20, default='unknown')
+    related_account_number = models.CharField(max_length=20, null=True, blank=True)
+    commission = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    description = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Transaction {self.id}: {self.amount} on {self.created_at}"
+>>>>>>> 2b87986d (Last Version Of Project)
 #
 # class Transaction(models.Model):
 #     TRANSACTION_TYPES = [

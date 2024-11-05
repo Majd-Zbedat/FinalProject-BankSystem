@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from BankAccount.models import BankAccount
+from .models import Loan
+
+
 
 class GrantLoanSerializer(serializers.Serializer):
     account_number = serializers.CharField(max_length=20)
@@ -16,91 +19,9 @@ class GrantLoanSerializer(serializers.Serializer):
         return value
 
 
-# Loan/serializers.py
-from rest_framework import serializers
-from .models import Loan
-
-
-# class LoanListSerializer(serializers.ModelSerializer):
-#
-#     # # Additional fields for calculations
-#     # total_granted = serializers.SerializerMethodField()
-#     # total_repaid = serializers.SerializerMethodField()
-#     # remaining_balance = serializers.SerializerMethodField()
-#     # # Loan/serializers.py
-#     # from rest_framework import serializers
-#
-#
-#     account_number = serializers.CharField(source='bank_account__account_number')
-#     total_granted = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     total_repaid = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     remaining_balance = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     granted_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
-#
-#
-#     class Meta:
-#         model = Loan
-#         fields = [
-#             'account_number', 'amount', 'granted_at', 'repaid',
-#             'total_granted', 'total_repaid', 'remaining_balance'
-#         ]
-#
-#     def get_total_granted(self, obj):
-#         # Total amount of the loan granted
-#         return obj.amount
-#
-#     def get_total_repaid(self, obj):
-#         # Total amount repaid towards this loan
-#         return obj.amount_paid
-#
-#     def get_remaining_balance(self, obj):
-#         # Calculate the remaining balance to be repaid
-#         return obj.amount - obj.amount_paid
-
-#
-# from rest_framework import serializers
-#
-# class LoanListSerializer(serializers.Serializer):
-#     account_number = serializers.CharField()
-#     total_granted = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     total_repaid = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     remaining_balance = serializers.DecimalField(max_digits=10, decimal_places=2)
-
-
-# # Loan/serializers.py
-# from rest_framework import serializers
-# from .models import Loan
-#
-# class SubLoanSerializer(serializers.Serializer):
-#     id = serializers.IntegerField()  # Add loan ID field
-#
-#     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     granted_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
-#
-# class LoanListSerializer(serializers.Serializer):
-#     account_number = serializers.CharField()
-#     email = serializers.EmailField()  # Include the user's email
-#     total_granted = serializers.DecimalField(max_digits=10, decimal_places=2)
-#
-#     total_repaid = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     remaining_balance = serializers.DecimalField(max_digits=10, decimal_places=2)
-#     sub_loans = SubLoanSerializer(many=True)
-#
-#
-#
-#
-
-
-
-
-
-
-# Loan/serializers.py
-from rest_framework import serializers
-from .models import Loan
 
 class SubLoanSerializer(serializers.Serializer):
-    id = serializers.IntegerField()  # Include loan ID
+    id = serializers.IntegerField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     granted_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
     remaining_balance = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -108,7 +29,7 @@ class SubLoanSerializer(serializers.Serializer):
 
 class LoanListSerializer(serializers.Serializer):
     account_number = serializers.CharField()
-    email = serializers.EmailField()  # Include the user's email
+    email = serializers.EmailField()
 
     total_loans = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_paid = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -119,12 +40,9 @@ class LoanListSerializer(serializers.Serializer):
 
 
 
-# Loan/serializers.py
-from rest_framework import serializers
-from .models import Loan
 
 class RepayLoanSerializer(serializers.Serializer):
-    account_number = serializers.CharField()  # Add account_number field
+    account_number = serializers.CharField()
 
     loan_id = serializers.IntegerField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)

@@ -1,17 +1,12 @@
-from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from .models import Loan
 from .serializers import GrantLoanSerializer, LoanListSerializer
 from BankAccount.models import BankAccount
 from BankBalance.models import BankBalance
-
-
-# Loan/views.py
-from rest_framework import generics
+from .serializers import RepayLoanSerializer
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
-from .models import Loan
 from .serializers import LoanListSerializer, SubLoanSerializer
 from django.db.models import Sum, F
 
@@ -20,42 +15,37 @@ class LoanListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Get all loans for superusers, or only user-specific loans for regular users
         loan_filter = Loan.objects.all() if self.request.user.is_superuser else Loan.objects.filter(user=self.request.user)
 
-        # Group loans by account, including details for each loan (sub-loan)
         loans_by_account = (
             loan_filter
-            .values('bank_account__account_number', 'user__email')  # Include user email
+            .values('bank_account__account_number', 'user__email')
             .annotate(
                 total_granted=Sum('amount'),
                 total_repaid=Sum('amount_paid'),
                 remaining_balance=Sum(F('amount') - F('amount_paid')),
-                total_loans=Sum('amount'),  # Total amount of loans for each account
-                total_paid=Sum('amount_paid'),  # Total paid for each account
+                total_loans=Sum('amount'),
+                total_paid=Sum('amount_paid'),
             )
             .order_by('bank_account__account_number')
         )
 
-        # Fetch each account's loans as sub-loans with timestamps and repayment status
         for loan_account in loans_by_account:
             account_number = loan_account['bank_account__account_number']
-            loan_account['email'] = loan_account['user__email']  # Add user email
+            loan_account['email'] = loan_account['user__email']
             loan_account['account_number'] = account_number
 
-            # Fetch sub-loans for the account, including loan.id and repayment details
             sub_loans = Loan.objects.filter(bank_account__account_number=account_number).values(
                 'id', 'amount', 'granted_at',
-                'amount_paid',  # Amount paid so far
-                'repaid'  # Whether the loan is fully repaid
+                'amount_paid',
+                'repaid'
             )
 
-            # Add remaining balance and repayment status to each sub-loan
             for sub_loan in sub_loans:
                 sub_loan['remaining_balance'] = sub_loan['amount'] - sub_loan['amount_paid']
-                sub_loan['is_repaid'] = sub_loan['repaid']  # Add repayment status
+                sub_loan['is_repaid'] = sub_loan['repaid']
 
-            loan_account['sub_loans'] = list(sub_loans)  # Add the sub-loans for each account
+            loan_account['sub_loans'] = list(sub_loans)
 
         return loans_by_account
 
@@ -105,28 +95,6 @@ class LoanListView(generics.ListAPIView):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-# Loan/views.py
-from django.shortcuts import get_object_or_404
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import Loan
-from .serializers import GrantLoanSerializer
-from BankAccount.models import BankAccount
-from BankBalance.models import BankBalance
-from django.db.models import Sum
-
 class GrantLoanView(generics.CreateAPIView):
     serializer_class = GrantLoanSerializer
     permission_classes = [IsAuthenticated]
@@ -137,42 +105,31 @@ class GrantLoanView(generics.CreateAPIView):
             account_number = serializer.validated_data['account_number']
             amount = serializer.validated_data['amount']
 
-            # Check if the user is a superuser
             if request.user.is_superuser:
-                # Superusers can grant loans to any account
                 account = get_object_or_404(BankAccount, account_number=account_number)
             else:
-                # Regular users can only grant loans for their own accounts
                 account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
 
-            # Check if the account is suspended or blocked
             if account.suspended:
                 return Response({"error": "Your account is suspended."}, status=status.HTTP_400_BAD_REQUEST)
             if account.status == 'blocked':
                 return Response({"error": "Your account is blocked."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Retrieve the current bank balance
             bank_balance = get_object_or_404(BankBalance)
 
-            # Check if the bank has enough balance to grant the loan
             if amount > bank_balance.total_balance:
                 return Response({"error": "Insufficient bank balance to grant the loan."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Calculate total loans granted to the user
             total_granted = Loan.objects.filter(user=request.user).aggregate(total=Sum('amount'))['total'] or 0
 
-            # Check if the total loan limit is exceeded
             if total_granted + amount > 200000:
                 return Response({"error": "Total loan amount cannot exceed 200,000 NIS."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Create the loan
             loan = Loan.objects.create(user=request.user, bank_account=account, amount=amount)
 
-            # Update the bank account balance and the bank's total balance
             account.balance += amount
             account.save()
 
-            # Deduct the loan amount from the bank's total balance
             bank_balance.total_balance -= amount
             bank_balance.save()
 
@@ -192,6 +149,7 @@ class GrantLoanView(generics.CreateAPIView):
 
 
 
+<<<<<<< HEAD
 
 
 
@@ -537,6 +495,8 @@ from BankBalance.models import BankBalance  # Import your BankBalance model
 from BankAccount.models import BankAccount  # Import your BankAccount model
 from django.shortcuts import get_object_or_404  # Import the shortcut
 
+=======
+>>>>>>> 2b87986d (Last Version Of Project)
 class RepayLoanView(generics.CreateAPIView):
     serializer_class = RepayLoanSerializer
     permission_classes = [IsAuthenticated]
@@ -548,49 +508,37 @@ class RepayLoanView(generics.CreateAPIView):
             amount = serializer.validated_data['amount']
             account_number = serializer.validated_data['account_number']
 
-            # Fetch the loan instance
             loan = get_object_or_404(Loan, id=loan_id)
 
-            # Ensure the account number belongs to the loan's user for both regular users and superusers
             if request.user.is_superuser:
-                # Superusers can use any account for repayment
                 account = get_object_or_404(BankAccount, account_number=account_number)
             else:
-                # Regular users can only use their own accounts
                 account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
 
-            # Check if the account is suspended or blocked
             if account.suspended:
                 return Response({"error": "Your account is suspended."}, status=status.HTTP_400_BAD_REQUEST)
             if account.status == 'blocked':
                 return Response({"error": "Your account is blocked."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Ensure the loan belongs to the user or the superuser
             if not request.user.is_superuser and loan.user != request.user:
                 return Response({"error": "You do not have permission to repay this loan."}, status=status.HTTP_403_FORBIDDEN)
 
-            # Check if the repayment amount is valid
             if amount <= 0:
                 return Response({"error": "Repayment amount must be positive."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check if the amount exceeds the remaining balance of the loan
             remaining_balance = loan.amount - loan.amount_paid
             if amount > remaining_balance:
                 return Response({"error": "Repayment amount exceeds the remaining balance of the loan."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Fetch the current bank balance
-            bank_balance = BankBalance.objects.first()  # Assuming there's only one BankBalance instance
+            bank_balance = BankBalance.objects.first()
             if amount > bank_balance.total_balance:
                 return Response({"error": "Insufficient bank balance to make the repayment."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Update loan repayment
             loan.repay(amount)
 
-            # Update the bank balance
-            bank_balance.total_balance += amount  # Assuming repayments increase the bank balance
+            bank_balance.total_balance += amount
             bank_balance.save()
 
-            # Prepare detailed feedback
             feedback = {
                 "message": "Loan repayment successful.",
                 "loan_id": loan.id,

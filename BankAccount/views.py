@@ -53,12 +53,11 @@ class BankAccountCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Check if the user is a superuser
         if not self.request.user.is_superuser:
             raise PermissionDenied("You do not have permission to create a bank account.")
 
-        # Save the bank account if the user is a superuser
-        serializer.save()
+
+        serializer.save() # Save the bank account if the user is a superuser
 
 
 
@@ -69,12 +68,9 @@ class BankAccountListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Check if the user is a superuser
         if self.request.user.is_superuser:
-            # Superusers can see all bank accounts
             return BankAccount.objects.all()
         else:
-            # Regular users can only see their own bank accounts
             return BankAccount.objects.filter(user=self.request.user)
 
 
@@ -251,7 +247,7 @@ class BankAccountSuspendUnsuspendView(APIView):
 
     def put(self, request):
         account_number = request.data.get('account_number')
-        action = request.data.get('action')  # Expecting 'suspend' or 'unsuspend'
+        action = request.data.get('action')
 
         if not account_number:
             return Response({"error": "Account number is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -279,6 +275,17 @@ class BankAccountSuspendUnsuspendView(APIView):
 
             bank_account.suspended = True
             bank_account.save()
+<<<<<<< HEAD
+=======
+
+            Transaction.objects.create(
+               # user=request.user,
+                account_number=bank_account.account_number,
+                amount=0,
+                transaction_type='suspend',
+                description=f"Account {bank_account.account_number} suspended."
+            )
+>>>>>>> 2b87986d (Last Version Of Project)
             return Response({"message": "Account suspended successfully."}, status=status.HTTP_200_OK)
 
         elif action == 'unsuspend':
@@ -382,6 +389,7 @@ from .serializers import BankAccountSerializer, \
 
 
 class DepositView(APIView):
+<<<<<<< HEAD
     permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
 
     def get(self, request):
@@ -628,21 +636,25 @@ from .serializers import BankAccountSerializer, BankAccountDepositSerializer  # 
 
 class WithdrawView(APIView):
     permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access this view
+=======
+    permission_classes = [IsAuthenticated]
+>>>>>>> 2b87986d (Last Version Of Project)
 
     def get(self, request):
-        # Check if the user is a superuser
         if request.user.is_superuser:
-            # Superusers can see all accounts
             accounts = BankAccount.objects.all()
         else:
-            # Regular users can only see their own accounts
             accounts = BankAccount.objects.filter(user=request.user)
 
         serializer = BankAccountSerializer(accounts, many=True)
         return Response(serializer.data)
 
     def post(self, request):
+<<<<<<< HEAD
         serializer = BankAccountDepositSerializer(data=request.data)  # Serializer for withdraw operation
+=======
+        serializer = BankAccountDepositSerializer(data=request.data)
+>>>>>>> 2b87986d (Last Version Of Project)
         if serializer.is_valid():
             account_number = serializer.validated_data['account_number']
             amount = serializer.validated_data['amount']
@@ -659,9 +671,84 @@ class WithdrawView(APIView):
             if account.suspended:
                 return Response({"error": "Illegal operation: Account is suspended."}, status=status.HTTP_403_FORBIDDEN)
 
+<<<<<<< HEAD
             # Check if the balance is sufficient for withdrawal
             if account.balance >= amount:
                 account.balance -= amount
+=======
+            commission_percentage = Decimal(0.02)
+            commission = amount * commission_percentage
+
+            account.balance += amount
+            account.save()
+
+            bank_balance = BankBalance.objects.first()
+            bank_balance.total_balance += commission
+            bank_balance.save()
+
+            Transaction.objects.create(
+                account_number=account_number,
+                amount=amount,
+                transaction_type='deposit',
+                commission=commission
+            )
+
+            return Response({
+                "message": "Deposit successful",
+                "new_balance": account.balance,
+                "commission": commission
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+class WithdrawView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.is_superuser:
+            accounts = BankAccount.objects.all()
+        else:
+            accounts = BankAccount.objects.filter(user=request.user)
+
+        serializer = BankAccountSerializer(accounts, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = BankAccountWithdrawSerializer(data=request.data)
+
+        if serializer.is_valid():
+            account_number = serializer.validated_data['account_number']
+            amount = serializer.validated_data['amount']
+
+            if amount <= 0:
+                return Response({"error": "Withdrawal amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if request.user.is_superuser:
+                account = get_object_or_404(BankAccount, account_number=account_number)
+            else:
+                account = get_object_or_404(BankAccount, account_number=account_number, user=request.user)
+
+            if account.status == 'blocked':
+                return Response({"message": "Your account is blocked!"}, status=status.HTTP_400_BAD_REQUEST)
+            if account.suspended:
+                return Response({"error": "Illegal operation: Account is suspended."}, status=status.HTTP_403_FORBIDDEN)
+
+            commission_percentage = 0.02
+            commission = Decimal(amount) * Decimal(commission_percentage)
+
+            total_deduction = amount + commission
+            if account.balance >= total_deduction:
+                account.balance -= total_deduction
+>>>>>>> 2b87986d (Last Version Of Project)
                 account.save()
                 return Response({"message": "Withdrawal successful", "new_balance": account.balance}, status=status.HTTP_200_OK)
             else:

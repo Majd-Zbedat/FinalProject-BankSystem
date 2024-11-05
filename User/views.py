@@ -17,10 +17,10 @@ from User.models import models
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-User = get_user_model()
 from User.models import User
-from User.serializers import UserDeleteSerializer
 
+
+User = get_user_model()
 
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -117,3 +117,35 @@ class CreateTokenView(ObtainAuthToken):
     serializer_class = AuthTokenSerializer
     renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
 
+<<<<<<< HEAD
+=======
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=200)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> 2b87986d (Last Version Of Project)
